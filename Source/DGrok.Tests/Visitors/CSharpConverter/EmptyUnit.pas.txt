@@ -1,0 +1,5 @@
+﻿unit emptyunit;
+
+interface
+implementation
+end.

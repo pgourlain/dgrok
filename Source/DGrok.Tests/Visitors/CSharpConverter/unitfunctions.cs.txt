@@ -1,0 +1,21 @@
+﻿namespace unitfunctions
+{
+    using System;
+    using System.Collections.Generic;
+
+    public static void MyPublicProcedure()
+    {
+    }
+    public static string MyPublicFunction()
+    {
+        string result;
+        result = "coucou";
+        return result;
+    }
+    public static bool MyPublicBooleanFunction()
+    {
+        bool result;
+        result = false;
+        return result;
+    }
+}
