@@ -27,11 +27,13 @@ using NUnit.Framework.SyntaxHelpers;
 namespace DGrok.Tests
 {
     [TestFixture]
+    //[global::Microsoft.VisualStudio.TestTools.UnitTesting.TestClass]
     public class CompilerDefinesTests
     {
         private CompilerDefines _defines;
 
         [SetUp]
+        //[global::Microsoft.VisualStudio.TestTools.UnitTesting.TestInitialize]
         public void SetUp()
         {
             _defines = CompilerDefines.CreateEmpty();
@@ -43,33 +45,40 @@ namespace DGrok.Tests
         }
 
         [Test]
+        //[global::Microsoft.VisualStudio.TestTools.UnitTesting.TestMethod]
         public void FalseIfUndefinedIfDef()
         {
             Assert.That(DefineIsTrue("IFDEF FOO"), Is.False);
         }
         [Test]
+        //[global::Microsoft.VisualStudio.TestTools.UnitTesting.TestMethod]
         public void TrueIfUndefinedIfNDef()
         {
             Assert.That(DefineIsTrue("IFNDEF FOO"), Is.True);
         }
         [Test, ExpectedException(typeof(PreprocessorException))]
+        //[global::Microsoft.VisualStudio.TestTools.UnitTesting.TestMethod]
+        //[global::Microsoft.VisualStudio.TestTools.UnitTesting.ExpectedException(typeof(PreprocessorException))]
         public void ErrorIfUndefinedIf()
         {
             DefineIsTrue("IF Foo");
         }
         [Test]
+        //[global::Microsoft.VisualStudio.TestTools.UnitTesting.TestMethod]
         public void DefineDirectiveAsTrue()
         {
             _defines.DefineDirectiveAsTrue("IFDEF FOO");
             Assert.That(DefineIsTrue("IFDEF FOO"), Is.True);
         }
         [Test]
+        //[global::Microsoft.VisualStudio.TestTools.UnitTesting.TestMethod]
         public void DefineDirectiveAsFalse()
         {
             _defines.DefineDirectiveAsFalse("IFDEF FOO");
             Assert.That(DefineIsTrue("IFDEF FOO"), Is.False);
         }
         [Test]
+        //[global::Microsoft.VisualStudio.TestTools.UnitTesting.TestMethod]
         public void DefineSymbol()
         {
             _defines.DefineSymbol("FOO");
@@ -77,6 +86,7 @@ namespace DGrok.Tests
             Assert.That(DefineIsTrue("IFNDEF FOO"), Is.False);
         }
         [Test]
+        //[global::Microsoft.VisualStudio.TestTools.UnitTesting.TestMethod]
         public void UndefineSymbol()
         {
             _defines.UndefineSymbol("FOO");
@@ -84,10 +94,54 @@ namespace DGrok.Tests
             Assert.That(DefineIsTrue("IFNDEF FOO"), Is.True);
         }
         [Test]
+        //[global::Microsoft.VisualStudio.TestTools.UnitTesting.TestMethod]
         public void NotCaseSensitive()
         {
             _defines.DefineDirectiveAsTrue("IFDEF FOO");
             Assert.That(DefineIsTrue("IfDef Foo"), Is.True);
+        }
+        [Test]
+        //[global::Microsoft.VisualStudio.TestTools.UnitTesting.TestMethod]
+        public void DefinedAndTrue()
+        {
+            _defines.DefineSymbol("FOO");
+            _defines.DefineSymbol("BAR");
+            Assert.That(DefineIsTrue("if defined(Foo) and defined(Bar)"), Is.True);
+        }
+        [Test]
+        //[global::Microsoft.VisualStudio.TestTools.UnitTesting.TestMethod]
+        public void DefinedAndFalse()
+        {
+            _defines.DefineSymbol("FOO");
+            Assert.That(DefineIsTrue("if defined(Foo) and defined(Bar)"), Is.False);
+        }
+        [Test]
+        //[global::Microsoft.VisualStudio.TestTools.UnitTesting.TestMethod]
+        public void DefinedAndParenthesisTrue()
+        {
+            _defines.DefineSymbol("FOO");
+            _defines.DefineSymbol("BAR");
+            Assert.That(DefineIsTrue("IF (DEFINED(Foo) or defined(FOO2)) and defined(Bar)"), Is.True);
+        }
+        [Test]
+        //[global::Microsoft.VisualStudio.TestTools.UnitTesting.TestMethod]
+        public void DefinedAndParenthesisFalse()
+        {
+            _defines.DefineSymbol("BAR");
+            Assert.That(DefineIsTrue("IF (defined(Foo) or DEFINED(FOO2)) and defined(Bar)"), Is.False);
+        }
+        [Test]
+        //[global::Microsoft.VisualStudio.TestTools.UnitTesting.TestMethod]
+        public void DefinedOrFalse()
+        {
+            Assert.That(DefineIsTrue("if defined(Foo) or defined(Bar)"), Is.False);
+        }
+        [Test]
+        //[global::Microsoft.VisualStudio.TestTools.UnitTesting.TestMethod]
+        public void DefinedOrTrue()
+        {
+            _defines.DefineSymbol("FOO");
+            Assert.That(DefineIsTrue("if defined(Foo) OR defined(Bar)"), Is.True);
         }
     }
 }

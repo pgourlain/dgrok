@@ -62,6 +62,7 @@ namespace DGrok.Framework
         GotoStatement,
         Ident,
         IdentList,
+        IfDefinedStatement,
         IfStatement,
         ImplementationDecl,
         ImplementationSection,

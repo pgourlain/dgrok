@@ -17,19 +17,23 @@
 // LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
+using DGrok.DelphiNodes;
 using System;
 using System.Collections.Generic;
 using System.Text;
+using System.Linq;
 
 namespace DGrok.Framework
 {
     public class CompilerDefines
     {
         private Dictionary<string, bool> _dictionary;
+        private List<string> _symbols;
 
         private CompilerDefines()
         {
             _dictionary = new Dictionary<string, bool>(StringComparer.InvariantCultureIgnoreCase);
+            _symbols = new List<string>();
         }
 
         public CompilerDefines Clone()
@@ -37,6 +41,8 @@ namespace DGrok.Framework
             CompilerDefines clone = CompilerDefines.CreateEmpty();
             foreach (KeyValuePair<string, bool> pair in _dictionary)
                 clone.DefineDirective(pair.Key, pair.Value);
+            foreach (string symbol in _symbols)
+                clone.DefineSymbol(symbol);
             return clone;
         }
         public static CompilerDefines CreateEmpty()
@@ -125,6 +131,7 @@ namespace DGrok.Framework
         {
             if (String.IsNullOrEmpty(symbol))
                 return;
+            _symbols.Add(symbol);
             DefineDirectiveAsTrue("IFDEF " + symbol);
             DefineDirectiveAsTrue("IF Defined(" + symbol + ")");
             DefineDirectiveAsFalse("IFNDEF " + symbol);
@@ -138,9 +145,77 @@ namespace DGrok.Framework
                 return false;
             if (compilerDirective.StartsWith("IFNDEF ", StringComparison.InvariantCultureIgnoreCase))
                 return true;
-            throw new PreprocessorException("Compiler directive '" + compilerDirective +
-                "' has not been defined as either true or false", location);
+
+            Parser parser = Parser.FromText(compilerDirective, "input", CompilerDefines.CreateStandard(),
+                new MemoryFileLoader());
+            AstNode definedRule = parser.ParseRule(RuleType.IfDefinedStatement);
+            try
+            {
+                var result = Evaluate(definedRule, _symbols);
+                _dictionary.Add(compilerDirective, result);
+                return result;
+            }
+            catch
+            {
+                throw new PreprocessorException("Compiler directive '" + compilerDirective +
+                    "' has not been defined as either true or false", location);
+            }
         }
+
+        private static bool Evaluate(AstNode definedNode, List<string> symbols)
+        {
+            if (definedNode is IfDefinedStatementNode)
+            {
+                return Evaluate(((IfDefinedStatementNode)definedNode).ConditionNode, symbols);
+            }
+            if (definedNode is UnaryOperationNode)
+            {
+                var opNode = (UnaryOperationNode)definedNode;
+                if (opNode.OperatorNode.Type == TokenType.NotKeyword)
+                {
+                    return !Evaluate(opNode.OperandNode, symbols);
+                }
+            }
+            if (definedNode is BinaryOperationNode)
+            {
+                var binNode = (BinaryOperationNode)definedNode;
+                var left = Evaluate(binNode.LeftNode, symbols);
+                var right = Evaluate(binNode.RightNode, symbols);
+                switch (binNode.OperatorNode.Type)
+                {
+                    case TokenType.AndKeyword: return left && right;
+                    case TokenType.OrKeyword: return left || right;
+                }
+            }
+            if (definedNode is ParenthesizedExpressionNode)
+            {
+                var parenthesizedNode = (ParenthesizedExpressionNode)definedNode;
+                if ((parenthesizedNode.OpenParenthesisNode.Type == TokenType.OpenParenthesis) &&
+                    (parenthesizedNode.CloseParenthesisNode.Type == TokenType.CloseParenthesis))
+                {
+                    return Evaluate(parenthesizedNode.ExpressionNode, symbols);
+                }
+            }
+            if (definedNode is ParameterizedNode)
+            {
+                var paramNode = (ParameterizedNode)definedNode;
+                var identifier = (paramNode.LeftNode as Token);
+                if ((paramNode.OpenDelimiterNode.Type == TokenType.OpenParenthesis) &&
+                    (paramNode.CloseDelimiterNode.Type == TokenType.CloseParenthesis) &&
+                    (paramNode.ParameterListNode.Items.Count == 1) &&
+                    (identifier != null) &&
+                    string.Equals(identifier.Text, "defined", StringComparison.InvariantCultureIgnoreCase))
+                {
+                    var itemNode = paramNode.ParameterListNode.Items[0].ItemNode as Token;
+                    if (itemNode != null)
+                    {
+                        return symbols.Contains(itemNode.Text, StringComparer.InvariantCultureIgnoreCase);
+                    }
+                }
+            }
+            throw new Exception("can't evaluate define expression");
+        }
+
         public void UndefineSymbol(string symbol)
         {
             DefineDirectiveAsTrue("IFNDEF " + symbol);

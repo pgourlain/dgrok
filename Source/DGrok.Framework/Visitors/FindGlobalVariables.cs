@@ -34,6 +34,7 @@ namespace DGrok.Visitors
         {
             // do not visit children
         }
+
         public override void VisitVarDeclNode(VarDeclNode node)
         {
             foreach (DelimitedItemNode<Token> delimitedItemNode in node.NameListNode.Items)
